@@ -118,16 +118,13 @@ int main (int argc, char *argv[])
         {
 //          a. If the priority value of process is 0
             if (current_process->priority == 0) {
-//              A. set decrease_time_by to servicetime
-                // decrease_timer_by = current_process->remainingcputime;
-
-//              B. Terminate the process
+//              A. Terminate the process
                 terminatePcb(current_process);
-//              C. Calculate the turnaround time for the process
+//              B. Calculate the turnaround time for the process
                 turnaround_time_arr[arr_indexer] = timer - current_process->arrivaltime;
                 wait_time_arr[arr_indexer] = turnaround_time_arr[arr_indexer] - current_process->servicetime;
                 arr_indexer++;
-//              D. Deallocate the PCB (process control block)'s memory
+//              C. Deallocate the PCB (process control block)'s memory
                 free(current_process);
                 current_process = NULL;
             }
@@ -150,7 +147,7 @@ int main (int argc, char *argv[])
                     current_process = NULL;
                 }
 
-//              C. Timer has NOT been exhausted and there is another process waiting:
+//              C. Timer has NOT been exhausted:
 //                  - suspend process, set new priority and enqueue on tail
                 else {
                     current_process->priority = 2;
@@ -162,27 +159,26 @@ int main (int argc, char *argv[])
             }
 //          c. If the priority value of process is 2
             else if (current_process->priority == 2) {
-                // regardless of situation process always takes up 1 second
+//              A. decrease remaining_cpu_time by 1
                 current_process->remainingcputime -= 1;
-//              A. if there is a process with priority 0 waiting
+
+//              B. if there is a process with priority 0 waiting
                 if (level_0_queue) {
                     temp_p = suspendPcb(current_process);
                     level_2_queue = enqPcbHd(level_2_queue, temp_p);
                     current_process = deqPcb(&level_0_queue);
                     startPcb(current_process); 
-                    // current_process->remainingcputime -= 1;
                 }
                 
-//              B. if there is a process with priority 1 waiting
+//              C. if there is a process with priority 1 waiting
                 else if (level_1_queue) {
                     temp_p = suspendPcb(current_process);
                     level_2_queue = enqPcbHd(level_2_queue, temp_p);
                     current_process = deqPcb(&level_1_queue);
                     startPcb(current_process); 
-                    // current_process->remainingcputime -= 1;
                 }
 
-//              C. There are no level 0 or level 1 processes waiting
+//              D. There are no level 0 or level 1 processes waiting
                 else {
                     if (current_process->remainingcputime <= 0) {
                         terminatePcb(current_process);
@@ -196,9 +192,6 @@ int main (int argc, char *argv[])
                     }
 //                  Continue running if no other processes are waiting
                 }
-
-//              D. Decrease timer by 1 regardless of situation
-                // decrease_timer_by = 1;
             }
         }
 
