@@ -162,15 +162,27 @@ int main (int argc, char *argv[])
 //              A. decrease remaining_cpu_time by 1
                 current_process->remainingcputime -= 1;
 
-//              B. if there is a process with priority 0 waiting
-                if (level_0_queue) {
+//              B. If time has been exhausted
+                if (current_process->remainingcputime <= 0) {
+                    terminatePcb(current_process);
+
+                    turnaround_time_arr[arr_indexer] = timer - current_process->arrivaltime;
+                    wait_time_arr[arr_indexer] = turnaround_time_arr[arr_indexer] - current_process->servicetime;
+                    arr_indexer++;
+
+                    free(current_process);
+                    current_process = NULL;
+                }
+
+//              C. if there is a process with priority 0 waiting
+                else if (level_0_queue) {
                     temp_p = suspendPcb(current_process);
                     level_2_queue = enqPcbHd(level_2_queue, temp_p);
                     current_process = deqPcb(&level_0_queue);
                     startPcb(current_process); 
                 }
                 
-//              C. if there is a process with priority 1 waiting
+//              D. if there is a process with priority 1 waiting
                 else if (level_1_queue) {
                     temp_p = suspendPcb(current_process);
                     level_2_queue = enqPcbHd(level_2_queue, temp_p);
@@ -178,7 +190,7 @@ int main (int argc, char *argv[])
                     startPcb(current_process); 
                 }
 
-//              D. There are no level 0 or level 1 processes waiting
+//              E. There are no level 0 or level 1 processes waiting
                 else {
                     if (current_process->remainingcputime <= 0) {
                         terminatePcb(current_process);
