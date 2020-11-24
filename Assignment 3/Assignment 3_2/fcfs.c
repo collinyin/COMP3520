@@ -36,8 +36,6 @@ int main (int argc, char *argv[])
     MabPtr arena = NULL;
 
 //  1. Create Arena
-
-//  MAYBE SOMETHING WRONG WITH THIS....
     arena = (MabPtr) malloc(sizeof(Mab));
     
     if (!arena) {
@@ -104,6 +102,14 @@ int main (int argc, char *argv[])
     while (current_process || rt_queue || normal_queue || job_dispatcher
             || level_0_queue || level_1_queue || level_2_queue)
     {
+        // printf("Memory Linked List\n");
+        // temp_m = arena;
+        // while (temp_m) {
+        //     printf("[Size: %d, Alloc: %d] --> ", temp_m->size, temp_m->allocated);
+        //     temp_m = temp_m->next;
+        // }
+        // printf("\n");
+
 //      i. Unload all arrived processes from job dispatcher into RT or Normal dispatch Q
         while (job_dispatcher) {
             if (timer >= job_dispatcher->arrivaltime) {
@@ -123,8 +129,8 @@ int main (int argc, char *argv[])
 //      iia. Unload admittable jobs from rt_queue into level_0_queue 
         while (rt_queue) {  
 //          check if there is a fit and if so allocate memory
-            temp_m = memAlloc(arena, rt_queue->mbytes);
-            if (temp_m) {
+            rt_queue->memoryblock = memAlloc(arena, rt_queue->mbytes);
+            if (rt_queue->memoryblock) {
                 temp_p = deqPcb(&rt_queue);
                 level_0_queue = enqPcb(level_0_queue, temp_p);
             }
@@ -136,8 +142,8 @@ int main (int argc, char *argv[])
 //      iib. Unload admittable jobs from normal_queue into level_1_queue 
         while (normal_queue) {    
 //          check if there is a fit and if so allocate memory
-            temp_m = memAlloc(arena, normal_queue->mbytes);
-            if (temp_m) {
+            normal_queue->memoryblock = memAlloc(arena, normal_queue->mbytes);
+            if (normal_queue->memoryblock) {
                 temp_p = deqPcb(&normal_queue);
                 level_1_queue = enqPcb(level_1_queue, temp_p);
             }
@@ -145,6 +151,8 @@ int main (int argc, char *argv[])
                 break;
             }
         }
+
+        // printf("[Size: %d, Alloc: %d] --> ", level_1_queue->memoryblock->size, level_1_queue->memoryblock->allocated);
 
 //      iii. If there is a process currently running;
         if (current_process)

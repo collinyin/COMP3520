@@ -192,7 +192,7 @@ PcbPtr createnullPcb()
         newprocessPtr->args[1] = NULL;
         newprocessPtr->arrivaltime = 0;
         newprocessPtr->priority = 2;
-	newprocessPtr->servicetime = 0;
+	    newprocessPtr->servicetime = 0;
         newprocessPtr->remainingcputime = 0;
         newprocessPtr->mbytes = 0;
         newprocessPtr->memoryblock = NULL;
