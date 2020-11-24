@@ -36,7 +36,10 @@ int main (int argc, char *argv[])
     MabPtr arena = NULL;
 
 //  1. Create Arena
+
+//  MAYBE SOMETHING WRONG WITH THIS....
     arena = (MabPtr) malloc(sizeof(Mab));
+    
     if (!arena) {
         fprintf(stderr,"memory allocation error\n");
         exit(127);
@@ -253,12 +256,10 @@ int main (int argc, char *argv[])
                 if (level_0_queue) {
                     current_process = deqPcb(&level_0_queue);
                     startPcb(current_process);
-                    printf("LEVEL 0 START\n");
                 }
                 else if (level_1_queue) {
                     current_process = deqPcb(&level_1_queue);
                     startPcb(current_process);
-                    printf("LEVEL 1 START\n");
                 }
                 else {
                     current_process = deqPcb(&level_2_queue);
