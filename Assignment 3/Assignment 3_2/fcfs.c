@@ -34,6 +34,7 @@ int main (int argc, char *argv[])
     int decrease_timer_by = 0;
     int total_num_of_processes = 0;
     int free_flag = FALSE;
+    int suspend_flag = FALSE;
 
     /*** Main function variable queue declarations (they are all FCFS queues) ***/
 
@@ -110,7 +111,6 @@ int main (int argc, char *argv[])
 
 //  4. Whenever there is a running process or EITHER queue is not empty:
     PcbPtr temp_p;
-    MabPtr temp_m;
 
     while (current_process || rt_queue || normal_queue || job_dispatcher
             || level_0_queue || level_1_queue || level_2_queue)
@@ -205,6 +205,8 @@ int main (int argc, char *argv[])
                     temp_p = suspendPcb(current_process);
                     level_2_queue = enqPcb(level_2_queue, temp_p);
                     current_process = NULL;
+//                  Mark suspended
+                    suspend_flag = TRUE;
                 }
 
             }
@@ -233,7 +235,9 @@ int main (int argc, char *argv[])
                     temp_p = suspendPcb(current_process);
                     level_2_queue = enqPcbHd(level_2_queue, temp_p);
                     current_process = deqPcb(&level_0_queue);
-                    startPcb(current_process); 
+                    startPcb(current_process);
+//                  Mark suspended
+                    suspend_flag = TRUE;
                 }
                 
 //              D. if there is a process with priority 1 waiting
@@ -242,6 +246,8 @@ int main (int argc, char *argv[])
                     level_2_queue = enqPcbHd(level_2_queue, temp_p);
                     current_process = deqPcb(&level_1_queue);
                     startPcb(current_process); 
+//                  Mark suspended
+                    suspend_flag = TRUE;
                 }
 
 //              E. There are no level 0 or level 1 processes waiting
@@ -253,8 +259,11 @@ int main (int argc, char *argv[])
                         wait_time_arr[arr_indexer] = turnaround_time_arr[arr_indexer] - current_process->servicetime;
                         arr_indexer++;
 
+                        memFree(current_process->memoryblock);
                         free(current_process);
                         current_process = NULL;
+//                      Mark that a process has been terminated
+                        free_flag = TRUE;
                     }
 //                  Continue running if no other processes are waiting
                 }
@@ -278,10 +287,12 @@ int main (int argc, char *argv[])
                     current_process = deqPcb(&level_2_queue);
                 }
 
-//              Update the memory linked list
-                current_process->memoryblock = memAlloc(arena, current_process->mbytes);
+//              Update the memory linked list only if not suspended
+                if (suspend_flag == FALSE)
+                    current_process->memoryblock = memAlloc(arena, current_process->mbytes);
+
+                // print_linked_list(arena);
                 startPcb(current_process);
-                print_linked_list(arena);
             }
 
 //          b.  Let the dispatcher sleep for the correct time & increment dispatcher's timer
@@ -318,6 +329,7 @@ int main (int argc, char *argv[])
             }
         }
 //      v. reset free_flag variable
+        suspend_flag = FALSE;
         free_flag = FALSE;
 
 //      vi. Go back to 4.

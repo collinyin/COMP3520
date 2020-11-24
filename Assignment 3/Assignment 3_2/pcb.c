@@ -81,9 +81,13 @@ PcbPtr startPcb (PcbPtr p)
         }                                       // parent         
 
     } else { // already started & suspended so continue
+        
+        p->status = PCB_RUNNING;
+        printPcbHdr(stdout);
+        printPcb(p, stdout);
         kill (p->pid, SIGCONT);
     }    
-    p->status = PCB_RUNNING;
+    
     return p; 
 } 
 
