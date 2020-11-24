@@ -73,7 +73,6 @@ PcbPtr startPcb (PcbPtr p)
                 p->pid = getpid();
                 p->status = PCB_RUNNING;
                 printPcbHdr(stdout);            // printout in child to
-                if (!p->memoryblock) printf("SOMETHING WRONG WITH MEMORY BLOCK.\n");
                 printPcb(p, stdout);            //  sync with o/p
                 fflush(stdout);
                 execvp (p->args[0], p->args); 

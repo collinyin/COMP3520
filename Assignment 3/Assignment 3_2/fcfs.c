@@ -10,6 +10,19 @@
 /* Include files */
 #include "fcfs.h"
 
+void print_linked_list(MabPtr arena) {
+    MabPtr temp_m;
+    
+    printf("Memory Linked List\n");
+        temp_m = arena;
+        while (temp_m) {
+            if (temp_m->next) printf("[Size: %d, Alloc: %d] --> ", temp_m->size, temp_m->allocated);
+            else printf("[Size: %d, Alloc: %d] --> NULL\n", temp_m->size, temp_m->allocated);
+            
+            temp_m = temp_m->next;
+        }
+}
+
 int main (int argc, char *argv[])
 {
     /*** Main function variable declarations ***/
@@ -102,13 +115,6 @@ int main (int argc, char *argv[])
     while (current_process || rt_queue || normal_queue || job_dispatcher
             || level_0_queue || level_1_queue || level_2_queue)
     {
-        // printf("Memory Linked List\n");
-        // temp_m = arena;
-        // while (temp_m) {
-        //     printf("[Size: %d, Alloc: %d] --> ", temp_m->size, temp_m->allocated);
-        //     temp_m = temp_m->next;
-        // }
-        // printf("\n");
 
 //      i. Unload all arrived processes from job dispatcher into RT or Normal dispatch Q
         while (job_dispatcher) {
@@ -128,8 +134,8 @@ int main (int argc, char *argv[])
 
 //      iia. Unload admittable jobs from rt_queue into level_0_queue 
         while (rt_queue) {  
-//          check if there is a fit and if so allocate memory
-            rt_queue->memoryblock = memAlloc(arena, rt_queue->mbytes);
+//          check if there is a fit
+            rt_queue->memoryblock = memChk(arena, rt_queue->mbytes);
             if (rt_queue->memoryblock) {
                 temp_p = deqPcb(&rt_queue);
                 level_0_queue = enqPcb(level_0_queue, temp_p);
@@ -141,8 +147,8 @@ int main (int argc, char *argv[])
 
 //      iib. Unload admittable jobs from normal_queue into level_1_queue 
         while (normal_queue) {    
-//          check if there is a fit and if so allocate memory
-            normal_queue->memoryblock = memAlloc(arena, normal_queue->mbytes);
+//          check if there is a fit
+            normal_queue->memoryblock = memChk(arena, normal_queue->mbytes);
             if (normal_queue->memoryblock) {
                 temp_p = deqPcb(&normal_queue);
                 level_1_queue = enqPcb(level_1_queue, temp_p);
@@ -151,8 +157,6 @@ int main (int argc, char *argv[])
                 break;
             }
         }
-
-        // printf("[Size: %d, Alloc: %d] --> ", level_1_queue->memoryblock->size, level_1_queue->memoryblock->allocated);
 
 //      iii. If there is a process currently running;
         if (current_process)
@@ -166,6 +170,7 @@ int main (int argc, char *argv[])
                 wait_time_arr[arr_indexer] = turnaround_time_arr[arr_indexer] - current_process->servicetime;
                 arr_indexer++;
 //              C. Deallocate the PCB (process control block)'s memory
+                memFree(current_process->memoryblock);
                 free(current_process);
                 current_process = NULL;
 //              D. Mark that a process has been terminated
@@ -186,6 +191,7 @@ int main (int argc, char *argv[])
                     wait_time_arr[arr_indexer] = turnaround_time_arr[arr_indexer] - current_process->servicetime;
                     arr_indexer++;
 
+                    memFree(current_process->memoryblock);
                     free(current_process);
                     current_process = NULL;
 //                  Mark that a process has been terminated
@@ -215,6 +221,7 @@ int main (int argc, char *argv[])
                     wait_time_arr[arr_indexer] = turnaround_time_arr[arr_indexer] - current_process->servicetime;
                     arr_indexer++;
 
+                    memFree(current_process->memoryblock);
                     free(current_process);
                     current_process = NULL;
 //                  Mark that a process has been terminated
@@ -263,16 +270,18 @@ int main (int argc, char *argv[])
             {
                 if (level_0_queue) {
                     current_process = deqPcb(&level_0_queue);
-                    startPcb(current_process);
                 }
                 else if (level_1_queue) {
                     current_process = deqPcb(&level_1_queue);
-                    startPcb(current_process);
                 }
                 else {
                     current_process = deqPcb(&level_2_queue);
-                    startPcb(current_process);
                 }
+
+//              
+                current_process->memoryblock = memAlloc(arena, current_process->mbytes);
+                startPcb(current_process);
+                print_linked_list(arena);
             }
 
 //          b.  Let the dispatcher sleep for the correct time & increment dispatcher's timer
