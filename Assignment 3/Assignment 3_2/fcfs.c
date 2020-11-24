@@ -278,7 +278,7 @@ int main (int argc, char *argv[])
                     current_process = deqPcb(&level_2_queue);
                 }
 
-//              
+//              Update the memory linked list
                 current_process->memoryblock = memAlloc(arena, current_process->mbytes);
                 startPcb(current_process);
                 print_linked_list(arena);
