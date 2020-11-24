@@ -39,9 +39,19 @@
  *******************************************************/
 MabPtr memChk(MabPtr arena, int size)
 {
+    MabPtr curr = arena;
 
-// you need to implement it.
+//  Look through arena until size is found, if not return NULL
+    while (curr) {
+        if (!curr->allocated) {
+            if (curr->size >= size) {
+                return curr;
+            }
+        }
+        curr = curr->next;
+    }
 
+    return NULL;
 }
       
 /*******************************************************
@@ -52,8 +62,27 @@ MabPtr memChk(MabPtr arena, int size)
  *******************************************************/
 MabPtr memAlloc(MabPtr arena, int size)
 {
+    MabPtr correct;
+    MabPtr remaining;
+    MabPtr m;
 
-// You need to implement it.
+//  check if there exists a fit, if not return NULL
+    m = memChk(arena, size);
+    if (m) {
+        correct = memSplit(m, size);
+        remaining = correct->next;
+
+//      Set block to "allocated"
+        correct->allocated = TRUE;
+
+//      if remaining block exists (i.e. correct->size != size)
+        if (remaining)
+            memFree(remaining);
+
+        return correct;
+    }
+
+    return NULL;
 
 }
 
@@ -65,8 +94,24 @@ MabPtr memAlloc(MabPtr arena, int size)
  *******************************************************/
 MabPtr memFree(MabPtr m)
 {
+//  Set block to "free"
+    m->allocated = FALSE;
 
-// You need to implement it.
+//  Examine left side of block
+    if (m->prev) {
+        if (m->prev->allocated == FALSE) {
+            m = memMerge(m->prev);
+        }
+    }
+
+//  Examine right side of block
+    if (m->next) {
+        if (m->next->allocated == FALSE) {
+            m = memMerge(m);
+        }
+    }
+
+    return m;
 
 }
       
