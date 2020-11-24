@@ -253,10 +253,12 @@ int main (int argc, char *argv[])
                 if (level_0_queue) {
                     current_process = deqPcb(&level_0_queue);
                     startPcb(current_process);
+                    printf("LEVEL 0 START\n");
                 }
                 else if (level_1_queue) {
                     current_process = deqPcb(&level_1_queue);
                     startPcb(current_process);
+                    printf("LEVEL 1 START\n");
                 }
                 else {
                     current_process = deqPcb(&level_2_queue);
