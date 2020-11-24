@@ -20,16 +20,34 @@ int main (int argc, char *argv[])
     int timer = 0;
     int decrease_timer_by = 0;
     int total_num_of_processes = 0;
+    int free_flag = FALSE;
 
     /*** Main function variable queue declarations (they are all FCFS queues) ***/
+
+    PcbPtr job_dispatcher = NULL;
     PcbPtr rt_queue = NULL; 
     PcbPtr normal_queue = NULL;
     PcbPtr level_0_queue = NULL;
     PcbPtr level_1_queue = NULL;
     PcbPtr level_2_queue = NULL;
 
-//  2. Populate the rt_queue and normal_queue
+    /*** Main function variable memory allocation arena declaration ***/
 
+    MabPtr arena = NULL;
+
+//  1. Create Arena
+    arena = (MabPtr) malloc(sizeof(Mab));
+    if (!arena) {
+        fprintf(stderr,"memory allocation error\n");
+        exit(127);
+    }
+    arena->offset = 0;
+    arena->size = MEMORY_SIZE;
+    arena->allocated = FALSE;
+    arena->next = NULL;
+    arena->prev = NULL;
+    
+//  2. Populate the job_dispatcher
     if (argc <= 0)
     {
         fprintf(stderr, "FATAL: Bad arguments array\n");
@@ -47,54 +65,63 @@ int main (int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    //  put processes into rt_queue or normal_queue
+//  put processes into job_dispatcher
     while (!feof(input_list_stream)) {
         process = createnullPcb();
-        if (fscanf(input_list_stream,"%d, %d, %d",
+        if (fscanf(input_list_stream,"%d, %d, %d, %d",
             &(process->arrivaltime), 
             &(process->servicetime),
-            &(process->priority)) != 3) {
+            &(process->priority),
+            &(process->mbytes)) != 4) {
             free(process);
             continue;
         }
 
         process->remainingcputime = process->servicetime;
         process->status = PCB_INITIALIZED;
-        
-        // Process belongs in rt_queue
-        if (process->priority == 0) {
-            rt_queue = enqPcb(rt_queue, process);
-        }
-
-        // Process belongs in normal_queue
-        // - else statement because we are assuming valid inputs
-        else {
-            normal_queue = enqPcb(normal_queue, process);
-        }
-
+        job_dispatcher = enqPcb(job_dispatcher, process);
         total_num_of_processes++;
     }
     
-    //  Declare 2 arrays that contain each processes turnaround and wait times
+//  Declare 2 arrays that contain each processes turnaround and wait times
     float turnaround_time_arr[total_num_of_processes];
     float wait_time_arr[total_num_of_processes];
     int arr_indexer = 0;
 
 //  3. Ask the user to enter an integer value for 'time_quantum'
-
+    
     int time_quantum;
     printf("Enter Time Quantum (int): ");
     scanf("%d", &time_quantum);
 
 //  4. Whenever there is a running process or EITHER queue is not empty:
     PcbPtr temp_p;
-    while (current_process || rt_queue || normal_queue
+    MabPtr temp_m;
+
+    while (current_process || rt_queue || normal_queue || job_dispatcher
             || level_0_queue || level_1_queue || level_2_queue)
     {
-//      ia. Unload arrived pending processes from rt_queue into level_0_queue 
-//          and normal_queue into level_1_queue  
-        while (rt_queue) {    
-            if (timer >= rt_queue->arrivaltime) {
+//      i. Unload all arrived processes from job dispatcher into RT or Normal dispatch Q
+        while (job_dispatcher) {
+            if (timer >= job_dispatcher->arrivaltime) {
+                temp_p = deqPcb(&job_dispatcher);
+//              a. if job belongs in rt_queue
+                if (temp_p->priority == 0)
+                    rt_queue = enqPcb(rt_queue, temp_p);
+//              b. if job belongs in normal_queue
+                else if (temp_p->priority == 1)
+                    normal_queue = enqPcb(normal_queue, temp_p);
+            }
+            else {
+                break;
+            }
+        }
+
+//      iia. Unload admittable jobs from rt_queue into level_0_queue 
+        while (rt_queue) {  
+//          check if there is a fit and if so allocate memory
+            temp_m = memAlloc(arena, rt_queue->mbytes);
+            if (temp_m) {
                 temp_p = deqPcb(&rt_queue);
                 level_0_queue = enqPcb(level_0_queue, temp_p);
             }
@@ -102,9 +129,12 @@ int main (int argc, char *argv[])
                 break;
             }
         }
-//      ib. Unload arrived pending processes from normal_queue into level_1_queue 
+
+//      iib. Unload admittable jobs from normal_queue into level_1_queue 
         while (normal_queue) {    
-            if (timer >= normal_queue->arrivaltime) {
+//          check if there is a fit and if so allocate memory
+            temp_m = memAlloc(arena, normal_queue->mbytes);
+            if (temp_m) {
                 temp_p = deqPcb(&normal_queue);
                 level_1_queue = enqPcb(level_1_queue, temp_p);
             }
@@ -113,7 +143,7 @@ int main (int argc, char *argv[])
             }
         }
 
-//      ii. If there is a process currently running;
+//      iii. If there is a process currently running;
         if (current_process)
         {
 //          a. If the priority value of process is 0
@@ -127,6 +157,8 @@ int main (int argc, char *argv[])
 //              C. Deallocate the PCB (process control block)'s memory
                 free(current_process);
                 current_process = NULL;
+//              D. Mark that a process has been terminated
+                free_flag = TRUE;
             }
 
 //          b. If the priority value of process is 1
@@ -145,6 +177,8 @@ int main (int argc, char *argv[])
 
                     free(current_process);
                     current_process = NULL;
+//                  Mark that a process has been terminated
+                    free_flag = TRUE;
                 }
 
 //              C. Timer has NOT been exhausted:
@@ -172,6 +206,8 @@ int main (int argc, char *argv[])
 
                     free(current_process);
                     current_process = NULL;
+//                  Mark that a process has been terminated
+                    free_flag = TRUE;       
                 }
 
 //              C. if there is a process with priority 0 waiting
@@ -207,56 +243,62 @@ int main (int argc, char *argv[])
             }
         }
 
-//      iii. If there is no running process and there is a process ready to run
-//              - run the process with highest priority
-        if (!current_process && (level_0_queue || level_1_queue || level_2_queue))
-        {
-            if (level_0_queue) {
-                current_process = deqPcb(&level_0_queue);
-                startPcb(current_process);
+//      iv. If no process was freed during this iteration
+        if (free_flag == FALSE) {
+
+//          a. If there is no running process and there is a process ready to run
+//                  - run the process with highest priority
+            if (!current_process && (level_0_queue || level_1_queue || level_2_queue))
+            {
+                if (level_0_queue) {
+                    current_process = deqPcb(&level_0_queue);
+                    startPcb(current_process);
+                }
+                else if (level_1_queue) {
+                    current_process = deqPcb(&level_1_queue);
+                    startPcb(current_process);
+                }
+                else {
+                    current_process = deqPcb(&level_2_queue);
+                    startPcb(current_process);
+                }
             }
-            else if (level_1_queue) {
-                current_process = deqPcb(&level_1_queue);
-                startPcb(current_process);
+
+//          b.  Let the dispatcher sleep for the correct time & increment dispatcher's timer
+//              Sleeps only when process exists (to prevent a seg fault when checking for remainingcputime)
+            if (current_process) {
+                
+                if (current_process->priority == 0)
+                    decrease_timer_by = current_process->servicetime;
+
+                if (current_process->priority == 1) {
+                    if (current_process->remainingcputime < time_quantum)
+                        decrease_timer_by = current_process->remainingcputime;
+                    else
+                        decrease_timer_by = time_quantum;
+                }
+
+                if (current_process->priority == 2)
+                    decrease_timer_by = 1;
+
+                sleep(decrease_timer_by);
+                timer += decrease_timer_by;
             }
+
+//          c. If no process exists but there are jobs in the queues let the dispatcher sleep for 1
             else {
-                current_process = deqPcb(&level_2_queue);
-                startPcb(current_process);
+//              If all jobs have finished and there are none left in any queues 
+//                  we break the loop so the main thread doesn't sleep for quantum again
+                if (!current_process && !level_0_queue && !level_1_queue && !level_2_queue
+                        && !rt_queue && !normal_queue) 
+                    break;
+
+                sleep(1);
+                timer++;
             }
         }
-
-//      iv. Let the dispatcher sleep for the correct time & increment dispatcher's timer
-//          Sleeps only when process exists (to prevent a seg fault when checking for remainingcputime)
-        if (current_process) {
-            
-            if (current_process->priority == 0)
-                decrease_timer_by = current_process->servicetime;
-
-            if (current_process->priority == 1) {
-                if (current_process->remainingcputime < time_quantum)
-                    decrease_timer_by = current_process->remainingcputime;
-                else
-                    decrease_timer_by = time_quantum;
-            }
-
-            if (current_process->priority == 2)
-                decrease_timer_by = 1;
-
-            sleep(decrease_timer_by);
-            timer += decrease_timer_by;
-        }
-
-//      v. If no process exists but there are jobs in the queues let the dispatcher sleep for 1
-        else {
-//          If all jobs have finished and there are none left in any queues 
-//              we break the loop so the main thread doesn't sleep for quantum again
-            if (!current_process && !level_0_queue && !level_1_queue && !level_2_queue
-                    && !rt_queue && !normal_queue) 
-                break;
-
-            sleep(1);
-            timer++;
-        }
+//      v. reset free_flag variable
+        free_flag = FALSE;
 
 //      vi. Go back to 4.
     }
