@@ -79,5 +79,7 @@ PcbPtr createnullPcb();
 PcbPtr enqPcb(PcbPtr, PcbPtr);
 PcbPtr deqPcb(PcbPtr*);
 PcbPtr enqPcbHd(PcbPtr, PcbPtr);
+PcbPtr largestPcb(PcbPtr);
+PcbPtr deqLargestPcb(PcbPtr*);
 
 #endif

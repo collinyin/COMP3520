@@ -56,6 +56,64 @@ PCB management functions for HOST dispatcher
 #include "pcb.h"
 
 /*******************************************************
+ * PcbPtr largestPcb(PcbPtr process) - finds largest Pcb
+ *
+ * returns:
+ *    PcbPtr of process
+ *    NULL if no processes are in the queue
+ ******************************************************/
+PcbPtr largestPcb(PcbPtr p) 
+{
+    PcbPtr curr = p;
+    PcbPtr largest = curr;
+    while (curr) {
+        if (curr->remainingcputime > largest->remainingcputime) {
+            largest = curr;
+        }
+        curr = curr->next;
+    }
+
+    return largest;
+}
+
+/*******************************************************
+ * PcbPtr deqLargestPcb(PcbPtr process) - dequeues 
+ * largest Pcb
+ * 
+ * returns:
+ *    PcbPtr of dequeued process
+ *    NULL if no processes are in the queue
+ ******************************************************/
+PcbPtr deqLargestPcb(PcbPtr * hPtr) 
+{
+    PcbPtr p = * hPtr;
+    PcbPtr largest = largestPcb(p);
+    PcbPtr curr = p;
+    PcbPtr prev = NULL;
+
+//  if head if largest
+    if (curr) {
+        if (curr == largest) return deqPcb(hPtr);
+    }
+    else return NULL;
+
+//  if somewhere in middle is largest
+    while (curr->next) {
+        prev = curr;
+        curr = curr->next;
+        
+        if (curr == largest) {
+            prev->next = curr->next;
+            return curr;
+        }
+    }
+
+//  if tail is largest
+    prev->next = NULL;
+    return curr;
+}
+
+/*******************************************************
  * PcbPtr startPcb(PcbPtr process) - start (or restart)
  *    a process
  * returns:

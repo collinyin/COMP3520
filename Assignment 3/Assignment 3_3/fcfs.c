@@ -10,6 +10,21 @@
 /* Include files */
 #include "fcfs.h"
 
+void print_queue(PcbPtr queue) {
+
+    // prints out removed pcb
+    PcbPtr dequeued_p = deqLargestPcb(&queue);
+    printf("%d, %d, %d, %d\n", dequeued_p->arrivaltime, dequeued_p->remainingcputime, 
+    dequeued_p->priority, dequeued_p->mbytes);
+
+    // prints out remaining queue
+    PcbPtr p = queue;
+    while (p) {
+        printf("%d, %d, %d, %d\n", p->arrivaltime, p->remainingcputime, p->priority, p->mbytes);
+        p = p->next;
+    }
+}
+
 void print_linked_list(MabPtr arena) {
     MabPtr temp_m;
     
@@ -37,6 +52,7 @@ int main (int argc, char *argv[])
 
     /*** Main function variable queue declarations (they are all FCFS queues) ***/
 
+    PcbPtr swapping_queue = NULL;
     PcbPtr job_dispatcher = NULL;
     PcbPtr rt_queue = NULL; 
     PcbPtr normal_queue = NULL;
@@ -96,7 +112,7 @@ int main (int argc, char *argv[])
         job_dispatcher = enqPcb(job_dispatcher, process);
         total_num_of_processes++;
     }
-    
+ 
 //  Declare 2 arrays that contain each processes turnaround and wait times
     float turnaround_time_arr[total_num_of_processes];
     float wait_time_arr[total_num_of_processes];
@@ -108,10 +124,11 @@ int main (int argc, char *argv[])
     printf("Enter Time Quantum (int): ");
     scanf("%d", &time_quantum);
 
-//  5. Whenever there is a running process or queues aren't empty:
+//  5. Whenever there is a running process or the queues aren't empty:
     PcbPtr temp_p;
+    PcbPtr largest;
 
-    while (current_process || rt_queue || normal_queue || job_dispatcher
+    while (current_process || rt_queue || normal_queue || job_dispatcher || swapping_queue
             || level_0_queue || level_1_queue || level_2_queue)
     {
 
@@ -246,7 +263,19 @@ int main (int argc, char *argv[])
                 temp_p = deqPcb(&rt_queue);
                 level_0_queue = enqPcb(level_0_queue, temp_p);
             }
+//          there is no fit
             else {
+//              if there exists a Level 2 job in the Q, it can be swapped out
+                if (level_2_queue) {
+//                  swap out (enqueue largest to swapping_queue)
+                    largest = deqLargestPcb(&level_2_queue);
+                    memFree(largest->memoryblock);
+                    swapping_queue = enqPcb(swapping_queue, largest);
+//                  allocate memory and enqueue to Level 0 queue
+                    rt_queue->memoryblock = memAlloc(arena, rt_queue->mbytes);
+                    temp_p = deqPcb(&rt_queue);
+                    level_0_queue = enqPcb(level_0_queue, temp_p);
+                }
                 break;
             }
         }
@@ -269,7 +298,7 @@ int main (int argc, char *argv[])
 
 //          a. If there is no running process and there is a process ready to run
 //                  - run the process with highest priority
-            if (!current_process && (level_0_queue || level_1_queue || level_2_queue))
+            if (!current_process && (level_0_queue || level_1_queue || level_2_queue || swapping_queue))
             {
                 if (level_0_queue) {
                     current_process = deqPcb(&level_0_queue);
@@ -277,8 +306,12 @@ int main (int argc, char *argv[])
                 else if (level_1_queue) {
                     current_process = deqPcb(&level_1_queue);
                 }
-                else {
+                else if (level_2_queue) {
                     current_process = deqPcb(&level_2_queue);
+                }
+                else {
+                    current_process = deqPcb(&swapping_queue);
+                    current_process->memoryblock = memAlloc(arena, current_process->mbytes);
                 }
 
                 // print_linked_list(arena);
