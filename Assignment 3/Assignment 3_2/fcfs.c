@@ -281,7 +281,7 @@ int main (int argc, char *argv[])
                     current_process = deqPcb(&level_2_queue);
                 }
 
-                print_linked_list(arena);
+                // print_linked_list(arena);
                 startPcb(current_process);
             }
 
