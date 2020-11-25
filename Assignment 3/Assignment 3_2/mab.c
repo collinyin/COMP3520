@@ -63,22 +63,16 @@ MabPtr memChk(MabPtr arena, int size)
 MabPtr memAlloc(MabPtr arena, int size)
 {
     MabPtr correct;
-    MabPtr remaining;
     MabPtr m;
 
 //  check if there exists a fit, if not return NULL
     m = memChk(arena, size);
     if (m) {
         correct = memSplit(m, size);
-        remaining = correct->next;
 
 //      Set block to "allocated"
         correct->allocated = TRUE;
-
-//      if remaining block exists (i.e. correct->size != size)
-        if (remaining)
-            memFree(remaining);
-
+        
         return correct;
     }
 

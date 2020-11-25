@@ -13,11 +13,11 @@
 void print_linked_list(MabPtr arena) {
     MabPtr temp_m;
     
-    printf("Memory Linked List\n");
+    printf("\nMemory Linked List\n");
         temp_m = arena;
         while (temp_m) {
-            if (temp_m->next) printf("[Size: %d, Alloc: %d] --> ", temp_m->size, temp_m->allocated);
-            else printf("[Size: %d, Alloc: %d] --> NULL\n", temp_m->size, temp_m->allocated);
+            if (temp_m->next) printf("[Offset: %d, Size: %d, Alloc: %d] --> ", temp_m->offset, temp_m->size, temp_m->allocated);
+            else printf("[Offset: %d, Size: %d, Alloc: %d] --> NULL\n", temp_m->offset, temp_m->size, temp_m->allocated);
             
             temp_m = temp_m->next;
         }
@@ -132,33 +132,7 @@ int main (int argc, char *argv[])
             }
         }
 
-//      iia. Unload admittable jobs from rt_queue into level_0_queue 
-        while (rt_queue) {  
-//          check if there is a fit
-            rt_queue->memoryblock = memChk(arena, rt_queue->mbytes);
-            if (rt_queue->memoryblock) {
-                temp_p = deqPcb(&rt_queue);
-                level_0_queue = enqPcb(level_0_queue, temp_p);
-            }
-            else {
-                break;
-            }
-        }
-
-//      iib. Unload admittable jobs from normal_queue into level_1_queue 
-        while (normal_queue) {    
-//          check if there is a fit
-            normal_queue->memoryblock = memChk(arena, normal_queue->mbytes);
-            if (normal_queue->memoryblock) {
-                temp_p = deqPcb(&normal_queue);
-                level_1_queue = enqPcb(level_1_queue, temp_p);
-            }
-            else {
-                break;
-            }
-        }
-
-//      iii. If there is a process currently running;
+//      ii. If there is a process currently running;
         if (current_process)
         {
 //          a. If the priority value of process is 0
@@ -210,6 +184,7 @@ int main (int argc, char *argv[])
                 }
 
             }
+
 //          c. If the priority value of process is 2
             else if (current_process->priority == 2) {
 //              A. decrease remaining_cpu_time by 1
@@ -217,6 +192,7 @@ int main (int argc, char *argv[])
 
 //              B. If time has been exhausted
                 if (current_process->remainingcputime <= 0) {
+
                     terminatePcb(current_process);
 
                     turnaround_time_arr[arr_indexer] = timer - current_process->arrivaltime;
@@ -270,6 +246,32 @@ int main (int argc, char *argv[])
             }
         }
 
+//      iiia. Unload admittable jobs from rt_queue into level_0_queue 
+        while (rt_queue) {  
+//          check if there is a fit
+            rt_queue->memoryblock = memAlloc(arena, rt_queue->mbytes);
+            if (rt_queue->memoryblock) {
+                temp_p = deqPcb(&rt_queue);
+                level_0_queue = enqPcb(level_0_queue, temp_p);
+            }
+            else {
+                break;
+            }
+        }
+
+//      iiib. Unload admittable jobs from normal_queue into level_1_queue 
+        while (normal_queue) {    
+//          check if there is a fit
+            normal_queue->memoryblock = memAlloc(arena, normal_queue->mbytes);
+            if (normal_queue->memoryblock) {
+                temp_p = deqPcb(&normal_queue);
+                level_1_queue = enqPcb(level_1_queue, temp_p);
+            }
+            else {
+                break;
+            }
+        }
+
 //      iv. If no process was freed during this iteration
         if (free_flag == FALSE) {
 
@@ -287,11 +289,11 @@ int main (int argc, char *argv[])
                     current_process = deqPcb(&level_2_queue);
                 }
 
-//              Update the memory linked list only if not suspended
-                if (suspend_flag == FALSE)
-                    current_process->memoryblock = memAlloc(arena, current_process->mbytes);
+//              Allocate memory to memory linked list
+                // if (suspend_flag == FALSE)
+                    // current_process->memoryblock = memAlloc(arena, current_process->mbytes);
 
-                // print_linked_list(arena);
+                print_linked_list(arena);
                 startPcb(current_process);
             }
 
@@ -321,14 +323,14 @@ int main (int argc, char *argv[])
 //              If all jobs have finished and there are none left in any queues 
 //                  we break the loop so the main thread doesn't sleep for quantum again
                 if (!current_process && !level_0_queue && !level_1_queue && !level_2_queue
-                        && !rt_queue && !normal_queue) 
+                        && !rt_queue && !normal_queue && !job_dispatcher) 
                     break;
 
                 sleep(1);
                 timer++;
             }
         }
-//      v. reset free_flag variable
+//      v. Unflag free_flag and suspend_flag
         suspend_flag = FALSE;
         free_flag = FALSE;
 
