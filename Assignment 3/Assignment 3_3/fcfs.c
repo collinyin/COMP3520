@@ -12,15 +12,17 @@
 
 void print_queue(PcbPtr queue) {
 
-    // prints out removed pcb
-    PcbPtr dequeued_p = deqLargestPcb(&queue);
-    printf("%d, %d, %d, %d\n", dequeued_p->arrivaltime, dequeued_p->remainingcputime, 
-    dequeued_p->priority, dequeued_p->mbytes);
+    if (!queue) {
+        printf("NULL\n");
+        return;
+    }
 
     // prints out remaining queue
+    printf("QUEUE\n");
     PcbPtr p = queue;
     while (p) {
-        printf("%d, %d, %d, %d\n", p->arrivaltime, p->remainingcputime, p->priority, p->mbytes);
+        if (p->next) printf("[%d, %d, %d, %d] --> ", p->arrivaltime, p->remainingcputime, p->priority, p->mbytes);
+        else printf("[%d, %d, %d, %d] --> NULL\n", p->arrivaltime, p->remainingcputime, p->priority, p->mbytes);
         p = p->next;
     }
 }
@@ -49,6 +51,7 @@ int main (int argc, char *argv[])
     int decrease_timer_by = 0;
     int total_num_of_processes = 0;
     int free_flag = FALSE;
+    int swap_flag = FALSE;
 
     /*** Main function variable queue declarations (they are all FCFS queues) ***/
 
@@ -250,6 +253,12 @@ int main (int argc, char *argv[])
 //                      Mark that a process has been terminated
                         free_flag = TRUE;
                     }
+//                  temporarily dequeue to see if a level 0 process has arrived
+                    else {
+                        temp_p = suspendPcb(current_process);
+                        level_2_queue = enqPcbHd(level_2_queue, temp_p);
+                        current_process = NULL;
+                    }
 //                  Continue running if no other processes are waiting
                 }
             }
@@ -275,6 +284,12 @@ int main (int argc, char *argv[])
                     rt_queue->memoryblock = memAlloc(arena, rt_queue->mbytes);
                     temp_p = deqPcb(&rt_queue);
                     level_0_queue = enqPcb(level_0_queue, temp_p);
+                    // swap_flag = TRUE;
+                    free_flag = FALSE;
+                }
+                else {
+                    current_process = deqPcb(&level_2_queue);
+                    startPcb(current_process);
                 }
                 break;
             }
@@ -344,7 +359,7 @@ int main (int argc, char *argv[])
 //              If all jobs have finished and there are none left in any queues 
 //                  we break the loop so the main thread doesn't sleep for quantum again
                 if (!current_process && !level_0_queue && !level_1_queue && !level_2_queue
-                        && !rt_queue && !normal_queue && !job_dispatcher) 
+                        && !rt_queue && !normal_queue && !job_dispatcher && swapping_queue) 
                     break;
 
                 sleep(1);
