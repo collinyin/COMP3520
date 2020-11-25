@@ -51,7 +51,6 @@ int main (int argc, char *argv[])
     int decrease_timer_by = 0;
     int total_num_of_processes = 0;
     int free_flag = FALSE;
-    int swap_flag = FALSE;
 
     /*** Main function variable queue declarations (they are all FCFS queues) ***/
 
@@ -300,8 +299,6 @@ int main (int argc, char *argv[])
                         rt_queue->memoryblock = memAlloc(arena, rt_queue->mbytes);
                         temp_p = deqPcb(&rt_queue);
                         level_0_queue = enqPcb(level_0_queue, temp_p);
-                        // swap_flag = TRUE;
-                        // free_flag = FALSE;
                         current_process = NULL;
                     }
                 }
@@ -316,7 +313,6 @@ int main (int argc, char *argv[])
                         rt_queue->memoryblock = memAlloc(arena, rt_queue->mbytes);
                         temp_p = deqPcb(&rt_queue);
                         level_0_queue = enqPcb(level_0_queue, temp_p);
-                        // swap_flag = TRUE;
                     }
                 }
                 break;
