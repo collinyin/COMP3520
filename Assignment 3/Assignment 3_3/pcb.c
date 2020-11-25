@@ -64,6 +64,8 @@ PCB management functions for HOST dispatcher
  ******************************************************/
 PcbPtr largestPcb(PcbPtr p) 
 {
+    if (!p) return NULL;
+    
     PcbPtr curr = p;
     PcbPtr largest = curr;
     while (curr) {

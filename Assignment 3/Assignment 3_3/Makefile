@@ -4,4 +4,4 @@ process: sigtrap.c
 	gcc sigtrap.c -o process
 
 fcfs: fcfs.c
-	gcc fcfs.c pcb.c mab.c -o fcfs
+	gcc fcfs.c pcb.c mab.c -o fcfs -fsanitize=address

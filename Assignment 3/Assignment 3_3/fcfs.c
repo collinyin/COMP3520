@@ -253,12 +253,6 @@ int main (int argc, char *argv[])
 //                      Mark that a process has been terminated
                         free_flag = TRUE;
                     }
-//                  temporarily dequeue to see if a level 0 process has arrived
-                    else {
-                        temp_p = suspendPcb(current_process);
-                        level_2_queue = enqPcbHd(level_2_queue, temp_p);
-                        current_process = NULL;
-                    }
 //                  Continue running if no other processes are waiting
                 }
             }
@@ -274,26 +268,60 @@ int main (int argc, char *argv[])
             }
 //          there is no fit
             else {
-//              if there exists a Level 2 job in the Q, it can be swapped out
-                if (level_2_queue) {
-//                  swap out (enqueue largest to swapping_queue)
-                    largest = deqLargestPcb(&level_2_queue);
-                    memFree(largest->memoryblock);
-                    swapping_queue = enqPcb(swapping_queue, largest);
-//                  allocate memory and enqueue to Level 0 queue
-                    rt_queue->memoryblock = memAlloc(arena, rt_queue->mbytes);
-                    temp_p = deqPcb(&rt_queue);
-                    level_0_queue = enqPcb(level_0_queue, temp_p);
-                    // swap_flag = TRUE;
-                    free_flag = FALSE;
+//              if there exists a Level 2 job in the Q or the currently running process,
+//                  is a level 2 priorty job: it can be swapped out
+                if (current_process) {
+                    if (current_process->priority == 2 || level_2_queue) {
+//                      if level 2 queue is empty
+                        if (!level_2_queue) {
+//                          swap out (enqueue current job to swapping_queue)                        
+                            memFree(current_process->memoryblock);
+                            temp_p = suspendPcb(current_process);
+                            swapping_queue = enqPcb(swapping_queue, temp_p);
+                        }
+                        else {
+//                          check if the largest job in level_2_queue is larger than current job
+                            largest = largestPcb(level_2_queue);
+                            if (current_process->remainingcputime > largest->remainingcputime) {
+//                              swap out (enqueue current job to swapping_queue)                        
+                                memFree(current_process->memoryblock);
+                                temp_p = suspendPcb(current_process);
+                                swapping_queue = enqPcb(swapping_queue, temp_p);
+                            }
+                            else {
+//                              swap out (enqueue largest to swapping_queue)
+                                largest = deqLargestPcb(&level_2_queue);
+                                memFree(largest->memoryblock);
+                                swapping_queue = enqPcb(swapping_queue, largest);
+                            }                            
+                        }
+
+//                      allocate memory and enqueue to Level 0 queue
+                        rt_queue->memoryblock = memAlloc(arena, rt_queue->mbytes);
+                        temp_p = deqPcb(&rt_queue);
+                        level_0_queue = enqPcb(level_0_queue, temp_p);
+                        // swap_flag = TRUE;
+                        // free_flag = FALSE;
+                        current_process = NULL;
+                    }
                 }
+//              if there exists a Level 2 job in the Q: it can be swapped out                
                 else {
-                    current_process = deqPcb(&level_2_queue);
-                    startPcb(current_process);
+                    if (level_2_queue) {
+//                      swap out (enqueue largest to swapping_queue)
+                        largest = deqLargestPcb(&level_2_queue);
+                        memFree(largest->memoryblock);
+                        swapping_queue = enqPcb(swapping_queue, largest);
+//                      allocate memory and enqueue to Level 0 queue
+                        rt_queue->memoryblock = memAlloc(arena, rt_queue->mbytes);
+                        temp_p = deqPcb(&rt_queue);
+                        level_0_queue = enqPcb(level_0_queue, temp_p);
+                        // swap_flag = TRUE;
+                    }
                 }
                 break;
             }
-        }
+        }        
 
 //      iiib. Unload admittable jobs from normal_queue into level_1_queue 
         while (normal_queue) {    
@@ -329,7 +357,6 @@ int main (int argc, char *argv[])
                     current_process->memoryblock = memAlloc(arena, current_process->mbytes);
                 }
 
-                // print_linked_list(arena);
                 startPcb(current_process);
             }
 
