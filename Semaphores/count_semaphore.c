@@ -1,4 +1,4 @@
-// implementing binary semaphore
+// implementing counting semaphore
 #include <pthread.h>
 #include<stdlib.h>
 #include<stdio.h>
